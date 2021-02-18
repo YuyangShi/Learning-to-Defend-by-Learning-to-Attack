@@ -14,9 +14,7 @@ from models.wideresnet import *
 from models.resnet import *
 from attacker import *
 from utils import *
-#from adjust_learning_rate import adjust_learning_rate
-#from l2l_1_interp import *
-#from adv_loss import adv_loss_l2l_1
+
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR TRADES Adversarial Training')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
@@ -121,17 +119,14 @@ def train(args, model, attacker, device, train_loader, optimizer, optimizer_att,
             x_init.grad.data.fill_(0)
         model.eval()
 
-        #fea_b = model(x_init, mode='feature')
         fea_t = model(x_prime, mode='feature').detach()
-        #loss_adv = cos_dist(fea_b, fea_t)
         model.zero_grad()
-        #loss_adv = loss_adv.mean()
         with torch.enable_grad():
             loss_adv =  cos_dist(model(x_init, mode = 'feature'), fea_t).mean()
-        #loss_adv.backward(retain_graph=True)
+
         grad = torch.autograd.grad(loss_adv, [x_init])[0]
-        #grad = x_init.grad.data
         grad = grad/grad.abs().max()
+        
         attacker.train()
         optimizer_att.zero_grad()
         advinput = torch.cat([x_init,grad], 1).detach()
@@ -146,15 +141,6 @@ def train(args, model, attacker, device, train_loader, optimizer, optimizer_att,
         y_bar_prime = (1 - y_prime) / (10 - 1.0)
         y_tilde = (1 - epsilon_y) * y + epsilon_y * y_bar_prime
         
-        '''#start_time = time.time()
-        data, target = data.to(device), target.to(device)
-        target_onehot = one_hot_tensor(target, 10, device)
-        x_tilde, y_tilde = adv_interp(data, target_onehot, model, attacker, 
-                                      10,
-                                      config_adv_interp['epsilon'],
-                                      config_adv_interp['label_adv_delta'],
-                                      config_adv_interp['v_min'],
-                                      config_adv_interp['v_max'])'''
         model.train()
         attacker.eval()
         optimizer.zero_grad()
@@ -162,57 +148,12 @@ def train(args, model, attacker, device, train_loader, optimizer, optimizer_att,
         loss = soft_xent_loss(output, y_tilde)
         loss.backward()
         optimizer.step()
-        
-        '''model.eval()
-        attacker.train()
-        for _ in range(args.att_iter):
-            attacker.zero_grad()
-            optimizer_att.zero_grad()
-            x_tilde, y_tilde = adv_interp(data, target_onehot, model, attacker,
-                                          10,
-                                          config_adv_interp['epsilon'],
-                                          config_adv_interp['label_adv_delta'],
-                                          config_adv_interp['v_min'],
-                                          config_adv_interp['v_max'])
-            output = model(x_tilde, mode = 'output')
-            loss_att = -soft_xent_loss(output, y_tilde)
-            loss_att.backward()
-            optimizer_att.step()'''
-        #duration = time.time() - start_time
-        
-        '''# calculate robust loss
-        loss = adv_loss_l2l_1(model=model,
-                              attacker = attacker,
-                              x_natural=data,
-                              y=target,
-                              optimizer=optimizer,
-                              optimizer_att = optimizer_att,
-                              beta=args.beta, for_attacker = 0)
-        loss.backward()
-        optimizer.step()
-
-        for _ in range(args.att_iter):
-            optimizer_att.zero_grad()
-
-            attacker.zero_grad()
-            model.zero_grad()
-            loss_adv = -adv_loss_l2l_1(model=model,
-                                  attacker = attacker,
-                                  x_natural=data,
-                                  y=target,
-                                  optimizer=optimizer,
-                                  optimizer_att = optimizer_att, 
-                                  beta=args.beta, for_attacker = 1)
-            loss_adv.backward()
-            optimizer_att.step()'''
-
 
         # print progress
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                        100. * batch_idx / len(train_loader), loss.item()))
-            #print('Duration:',duration)
 
 
 def eval_train(model, device, train_loader):
@@ -316,10 +257,6 @@ def adjust_learning_rate(optimizer, epoch):
         lr = args.lr * 0.1
     if epoch >= 90:
         lr = args.lr * 0.01
-    '''if epoch >= 180:
-        lr = args.lr * 0.001
-    if epoch >= 240:
-        lr = args.lr * 0.0001'''
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 

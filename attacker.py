@@ -214,6 +214,5 @@ class Two_Layer_Attacker(nn.Module):
             p_x = p_x * self.eps
         else:
             raise RuntimeError("self.type = "+str(self.type)+"is not implemented")
-        #p_x = (x[:,:3,:,:]*self.std+self.mean+p_x).clamp(self._min, self._max)
-        #p_x = (p_x - self.mean)/self.std
+
         return p_x

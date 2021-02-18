@@ -89,10 +89,6 @@ def adv_loss_l2l_0(model,
         attacker.train()
         
     batch_size = len(x_natural)
-    '''x_natural.requires_grad_()
-    with torch.enable_grad():
-        loss_natural = F.cross_entropy(model(x_natural), y)
-    grad = torch.autograd.grad(loss_natural, [x_natural])[0]'''
     advinput = x_natural
     
     # generate adversarial example
@@ -101,19 +97,11 @@ def adv_loss_l2l_0(model,
 
 
     x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    #x_adv.requires_grad = False
-    # zero gradient
+
     optimizer.zero_grad()
     optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
+
     loss_robust = F.cross_entropy(model(x_adv), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
     loss = loss_robust
     return loss
 
@@ -136,7 +124,7 @@ def adv_loss_l2l_1(model,
     else:
         model.eval()
         attacker.train()
-    #x_natural = x_natural.clone()
+
     batch_size = len(x_natural)
     x_natural.requires_grad_()
     with torch.enable_grad():
@@ -150,288 +138,14 @@ def adv_loss_l2l_1(model,
 
 
     x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    #x_adv.requires_grad = False
-    # zero gradient
     optimizer.zero_grad()
     optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
+
     loss_robust = F.cross_entropy(model(x_adv), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
+
     loss = loss_robust
     return loss
 
-#=================== L2L_1 Hinge Loss ===========================
-def adv_loss_l2l_1_hinge(model,
-                attacker,
-                x_natural,
-                y,
-                optimizer,
-                optimizer_att,
-                beta=1.0,
-                epsilon = 0.031,
-                for_attacker = 0):
-
-
-    if for_attacker == 0:
-        model.train()
-        attacker.eval()
-    else:
-        model.eval()
-        attacker.train()
-    #x_natural = x_natural.clone()
-    batch_size = len(x_natural)
-    hinge_loss = torch.nn.MultiMarginLoss(p=1, margin=1.0)
-    x_natural.requires_grad_()
-    with torch.enable_grad():
-        loss_natural = hinge_loss(model(x_natural), y)
-    grad = torch.autograd.grad(loss_natural, [x_natural])[0]
-    advinput = torch.cat([x_natural,1.0*(grad/grad.abs().max())], 1).detach()
-    
-    # generate adversarial example
-    perturbation = attacker(advinput)
-    x_adv = x_natural + perturbation
-
-
-    x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    #x_adv.requires_grad = False
-    # zero gradient
-    optimizer.zero_grad()
-    optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
-    loss_robust = F.cross_entropy(model(x_adv), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
-    loss = loss_robust
-    return loss
-
-#=================== L2L_1 Loss with Random Noise ===========================
-def adv_loss_l2l_1_random_1(model,
-                attacker,
-                x_natural,
-                y,
-                optimizer,
-                optimizer_att,
-                beta=1.0,
-                epsilon = 0.031,
-                for_attacker = 0):
-
-
-    if for_attacker == 0:
-        model.train()
-        attacker.eval()
-    else:
-        model.eval()
-        attacker.train()
-    #x_natural = x_natural.clone()
-    batch_size = len(x_natural)
-    
-    x_perturb = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
-    x_perturb.requires_grad_()
-    with torch.enable_grad():
-        loss_perturb = F.cross_entropy(model(x_perturb), y)
-    grad = torch.autograd.grad(loss_perturb, [x_perturb])[0]
-    advinput = torch.cat([x_perturb,1.0*(grad/grad.abs().max())], 1).detach()
-    
-    # generate adversarial example
-    perturbation = attacker(advinput)
-    x_adv = x_perturb + perturbation
-
-    x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
-    x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    #x_adv.requires_grad = False
-    # zero gradient
-    optimizer.zero_grad()
-    optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
-    loss_robust = F.cross_entropy(model(x_adv), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
-    loss = loss_robust
-    return loss
-
-
-#=================== L2L_1 Loss with Random Noise ===========================
-def adv_loss_l2l_1_random_2(model,
-                attacker,
-                x_natural,
-                y,
-                optimizer,
-                optimizer_att,
-                beta=1.0,
-                epsilon = 0.031,
-                for_attacker = 0):
-
-
-    if for_attacker == 0:
-        model.train()
-        attacker.eval()
-    else:
-        model.eval()
-        attacker.train()
-    #x_natural = x_natural.clone()
-    batch_size = len(x_natural)
-    
-    x_perturb = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
-    x_perturb.requires_grad_()
-    with torch.enable_grad():
-        loss_perturb = F.cross_entropy(model(x_perturb), y)
-    grad = torch.autograd.grad(loss_perturb, [x_perturb])[0]
-    advinput = torch.cat([x_perturb,1.0*(grad/grad.abs().max())], 1).detach()
-    
-    # generate adversarial example
-    perturbation = attacker(advinput)
-    x_adv = x_natural + perturbation
-
-    x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
-    x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    #x_adv.requires_grad = False
-    # zero gradient
-    optimizer.zero_grad()
-    optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
-    loss_robust = F.cross_entropy(model(x_adv), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
-    loss = loss_robust
-    return loss
-
-# ======= L2L_1 Trades Loss ==================
-def adv_loss_l2l_1_trades(model,
-                attacker,
-                x_natural,
-                y,
-                optimizer,
-                optimizer_att,
-                beta=1.0,
-                epsilon = 0.031,
-                for_attacker = 0):
-
-
-    if for_attacker == 0:
-        model.train()
-        attacker.eval()
-    else:
-        model.eval()
-        attacker.train()
-        
-    batch_size = len(x_natural)
-    x_natural.requires_grad_()
-    with torch.enable_grad():
-        loss_natural = F.cross_entropy(model(x_natural), y)
-    grad = torch.autograd.grad(loss_natural, [x_natural])[0]
-    advinput = torch.cat([x_natural,1.0*(grad/grad.abs().max())], 1).detach()
-    
-    # generate adversarial example
-    perturbation = attacker(advinput)
-    x_adv = x_natural + perturbation
-
-
-    x_adv = torch.clamp(x_adv, 0.0, 1.0)
-    #x_adv.requires_grad = False
-    # zero gradient
-    optimizer.zero_grad()
-    optimizer_att.zero_grad()
-    # calculate robust loss
-    logits = model(x_natural)
-    loss_natural = F.cross_entropy(logits, y)
-    criterion_kl = nn.KLDivLoss(size_average=False)
-    loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),\
-                                                    F.softmax(model(x_natural), dim=1))
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    if for_attacker == 0:
-        loss = loss_natural + beta * loss_robust
-    else:
-        loss = beta * loss_robust
-    return loss
-
-
-#============= L2L_1 Trades Loss with JS-divergence ===============
-
-#============= L2L_2 Trades Loss =======================
-def adv_loss_l2l_2_trades(model,
-                attacker,
-                x_natural,
-                y,
-                optimizer,
-                optimizer_att,
-                beta=1.0,
-                epsilon = 0.031,
-                for_attacker = 0):
-
-
-    if for_attacker == 0:
-        model.train()
-        attacker.eval()
-    else:
-        model.eval()
-        attacker.train()
-        
-    batch_size = len(x_natural)
-    x_natural.requires_grad_()
-    with torch.enable_grad():
-        loss_natural = F.cross_entropy(model(x_natural), y)
-    grad = torch.autograd.grad(loss_natural, [x_natural])[0]
-    advinput = torch.cat([x_natural,1.0*(grad/grad.abs().max())], 1).detach()
-    
-    # generate adversarial example
-    perturbation = attacker(advinput)
-    x_adv = x_natural + perturbation
-
-
-    x_adv = torch.clamp(x_adv, 0.0, 1.0)
-
-    x_adv.requires_grad_()
-    with torch.enable_grad():
-        loss_adv = F.cross_entropy(model(x_adv), y)
-    grad_adv = torch.autograd.grad(loss_adv, [x_adv])[0]
-    advinput_1 = torch.cat([x_adv,1.0*(grad_adv/grad_adv.abs().max())], 1)
-    perturbation_1 = attacker(advinput_1)
-
-    perturbation_total = perturbation + perturbation_1
-    perturbation_total = torch.clamp(perturbation_total, -epsilon, epsilon)
-
-    x_adv_final = x_natural + perturbation_total
-    x_adv_final = torch.clamp(x_adv_final, 0.0, 1.0)
-    
-    #x_adv.requires_grad = False
-    # zero gradient
-    optimizer.zero_grad()
-    optimizer_att.zero_grad()
-    # calculate robust loss
-    logits = model(x_natural)
-    loss_natural = F.cross_entropy(logits, y)
-    criterion_kl = nn.KLDivLoss(size_average=False)
-    loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv_final), dim=1),\
-                                                    F.softmax(model(x_natural), dim=1))
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    if for_attacker == 0:
-        loss = loss_natural + beta * loss_robust
-    else:
-        loss = beta * loss_robust
-    return loss
 
 
 #=================== L2L_2 Loss =============================
@@ -479,71 +193,15 @@ def adv_loss_l2l_2(model,
     x_adv_final = torch.clamp(x_adv_final, 0.0, 1.0)
 
     
-    #x_adv.requires_grad = False
-    # zero gradient
     optimizer.zero_grad()
     optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
+
     loss_robust = F.cross_entropy(model(x_adv_final), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
+
     loss = loss_robust
     return loss
 
-#=================== MultiStep L2L_1 Loss ===========================
-def adv_loss_l2l_1_multistep(model,
-                attacker,
-                x_natural,
-                y,
-                optimizer,
-                optimizer_att,
-                beta=1.0,
-                epsilon = 0.031,
-                num_steps = 10,
-                step_size = 0.007, 
-                for_attacker = 0):
 
-
-    if for_attacker == 0:
-        model.train()
-        attacker.eval()
-    else:
-        model.eval()
-        attacker.train()
-    #x_natural = x_natural.clone()
-    batch_size = len(x_natural)
-    x_adv = Variable(x_natural.data, requires_grad = True)
-
-    for _ in range(num_steps):
-        with torch.enable_grad():
-            loss_natural = F.cross_entropy(model(x_adv), y)
-        grad = torch.autograd.grad(loss_natural, [x_adv])[0]
-        advinput = torch.cat([x_adv,1.0*(grad/grad.abs().max())], 1).detach()
-        perturbation = attacker(advinput)
-        x_adv = Variable(x_adv + perturbation*step_size/epsilon, requires_grad = True)
-        eta = torch.clamp(x_adv.data - x_natural.data, -epsilon, epsilon)
-        x_adv = Variable(x_natural.data + eta, requires_grad = True)
-        x_adv = Variable(torch.clamp(x_adv, 0, 1.0), requires_grad=True)
-        
-    X_adv = Variable(x_adv.data, requires_grad=True)       
-    optimizer.zero_grad()
-    optimizer_att.zero_grad()
-    # calculate robust loss
-    #logits = model(x_natural)
-    #loss_natural = F.cross_entropy(logits, y)
-    loss_robust = F.cross_entropy(model(X_adv), y)
-    '''loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                                    F.softmax(model(x_natural), dim=1))'''
-    '''if for_attacker == 0:
-        loss = (loss_natural + beta * loss_robust)/(1.0 + beta)
-    else:'''
-    loss = loss_robust
-    return loss
 
 #=================== L2L_k Loss =============================
 def adv_loss_l2l_k(k,
@@ -567,7 +225,7 @@ def adv_loss_l2l_k(k,
         attacker.train()
         
     batch_size = len(x_natural)
-    #x_natural.requires_grad_()
+
     x_adv = Variable(x_natural.data, requires_grad = True)
     for _ in range(k):
         with torch.enable_grad():
@@ -586,9 +244,7 @@ def adv_loss_l2l_k(k,
     x_adv_final = x_natural + perturbation_total
     x_adv_final = torch.clamp(x_adv_final, 0.0, 1.0)
 
-    
-    #x_adv.requires_grad = False
-    # zero gradient
+
     optimizer.zero_grad()
     optimizer_att.zero_grad()
     
