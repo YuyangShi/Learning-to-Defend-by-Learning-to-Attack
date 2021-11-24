@@ -8,7 +8,7 @@ This repository shares the code for the paper *[Learning to Defend by Learning t
 - **pgd_attack_cifar10.py** and **cw_attack_cifar10.py** perform two types or adversarial attack using PGD and CW method, respectively.
 
 ## Prerequisite
--Python3
--Pytorch
--CUDA
--numpy
+- Python3
+- Pytorch
+- CUDA
+- numpy
